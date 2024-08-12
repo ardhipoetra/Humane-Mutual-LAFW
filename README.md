@@ -1,1 +1,2 @@
-UNDER CONSTRUCTION...
+KSSを用いて、相互にMRENCLAVEの同一性検証を行います。
+あくまでも検証目的の実装です。
