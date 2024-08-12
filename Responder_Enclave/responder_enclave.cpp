@@ -23,10 +23,10 @@ namespace ResponderLAParams
 namespace IdentityRequest
 {
     sgx_measurement_t mr_enclave = {
-        0x6c, 0xea, 0x2a, 0xf0, 0x97, 0x51, 0x62, 0x02, 
-        0xa3, 0xb1, 0xfd, 0x59, 0x49, 0x4a, 0x29, 0x91, 
-        0x14, 0x81, 0xea, 0x55, 0x32, 0x77, 0x6a, 0x91, 
-        0x09, 0x06, 0xe7, 0x67, 0x28, 0x2e, 0x93, 0x0d
+        0x96, 0xe7, 0xe3, 0x1e, 0xf6, 0x40, 0x4a, 0xcc, 
+        0xb1, 0xca, 0x19, 0xda, 0x39, 0xac, 0x5d, 0xb8, 
+        0x8e, 0x37, 0xb7, 0x12, 0x89, 0xb9, 0x88, 0x60, 
+        0x65, 0xdc, 0xb5, 0x5c, 0xc5, 0x66, 0x9d, 0xab
     };
 
     sgx_measurement_t mr_signer = {
@@ -106,11 +106,14 @@ int ecall_responder_proc_msg2(sgx_dh_msg2_t *msg2, sgx_dh_msg3_t *msg3)
 
         if(res)
         {
-            const char *message = "MRENCLAVE mismatched.";
+            const char *message = "MRENCLAVE of Initiator Enclave mismatched.";
             ocall_print(message, 2); //2はエラーログである事を表す
             ocall_print_status(status);
             return -1;
         }
+
+        const char *message = "Initiator Enclave's MRENCLAVE is successfully verified.";
+        ocall_print(message, 1);
     }
 
     /* MRSIGNER */
@@ -118,7 +121,7 @@ int ecall_responder_proc_msg2(sgx_dh_msg2_t *msg2, sgx_dh_msg3_t *msg3)
 
     if(res)
     {
-        const char *message = "MRSIGNER mismatched.";
+        const char *message = "MRSIGNER of Initiator Enclave mismatched.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;
@@ -127,7 +130,7 @@ int ecall_responder_proc_msg2(sgx_dh_msg2_t *msg2, sgx_dh_msg3_t *msg3)
     /* ISV ProdID */
     if(initiator_identity.isv_prod_id != IdentityRequest::isv_prod_id)
     {
-        const char *message = "ISV ProdID mismatched.";
+        const char *message = "ISV ProdID of Initiator Enclave mismatched.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;
@@ -136,7 +139,7 @@ int ecall_responder_proc_msg2(sgx_dh_msg2_t *msg2, sgx_dh_msg3_t *msg3)
     /* ISVSVN */
     if(initiator_identity.isv_svn < IdentityRequest::isv_svn)
     {
-        const char *message = "Insufficient ISVSVN.";
+        const char *message = "Insufficient ISVSVN of Initiator Enclave.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;

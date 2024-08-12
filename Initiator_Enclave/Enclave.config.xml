@@ -9,4 +9,9 @@
   <DisableDebug>0</DisableDebug>
   <MiscSelect>0</MiscSelect>
   <MiscMask>0xFFFFFFFF</MiscMask>
+  <EnableKSS>1</EnableKSS>
+  <ISVFAMILYID_H>0xfd9e53529a8687df</ISVFAMILYID_H>
+  <ISVFAMILYID_L>0x049c2ff2da03e373</ISVFAMILYID_L>
+  <ISVEXTPRODID_H>0x1706728206e601db</ISVEXTPRODID_H>
+  <ISVEXTPRODID_L>0x96a502041a0b62d8</ISVEXTPRODID_L>
 </EnclaveConfiguration>

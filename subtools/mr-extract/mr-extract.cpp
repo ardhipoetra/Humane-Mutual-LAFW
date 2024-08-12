@@ -118,7 +118,7 @@ int main()
     std::cout << "\nCopy and paste following measurement values into enclave code." << std::endl;
     std::cout << "\033[32mMRENCLAVE value -> \033[m\n";
 
-    std::string mre_result, mrs_result;
+    std::string mre_result, mre_kss, mrs_result;
 
     int count = 0;
 
@@ -126,8 +126,13 @@ int main()
     {
         mre_result += byte_hex;
         mre_result += ", ";
+        mre_kss += byte_hex.substr(2, 3);
 
-        if(count > 0 && (count + 1) % 8 == 0) mre_result += "\n";
+        if(count > 0 && (count + 1) % 8 == 0)
+        {
+            mre_result += "\n";
+            mre_kss += "\n";
+        }
 
         count++;
     }
@@ -137,6 +142,28 @@ int main()
     mre_result.pop_back();
     std::cout << mre_result << std::endl;
 
+    std::cout << "\n\033[32mMRENCLAVE value for kss -> \033[m\n";
+
+    mre_kss.pop_back();
+    std::string::size_type start = 0;
+    std::string::size_type end;
+
+    end = mre_kss.find('\n', start);
+    std::cout << "<ISVFAMILYID_H>0x" << mre_kss.substr(start, end - start) << "</ISVFAMILYID_H>" << std::endl;
+    start = end + 1;
+
+    // Line 2
+    end = mre_kss.find('\n', start);
+    std::cout << "<ISVFAMILYID_L>0x" << mre_kss.substr(start, end - start) << "</ISVFAMILYID_L>" << std::endl;
+    start = end + 1;
+
+    // Line 3
+    end = mre_kss.find('\n', start);
+    std::cout << "<ISVEXTPRODID_H>0x" << mre_kss.substr(start, end - start) << "</ISVEXTPRODID_H>" << std::endl;
+    start = end + 1;
+
+    std::cout << "<ISVEXTPRODID_L>0x" << mre_kss.substr(start) << "</ISVEXTPRODID_L>" << std::endl;
+    // Line 4
 
     std::cout << "\n\033[32mMRSIGNER value  -> \033[m\n";
 

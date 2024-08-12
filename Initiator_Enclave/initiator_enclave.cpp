@@ -1,5 +1,7 @@
 #include "initiator_enclave_t.h"
 #include <sgx_trts.h>
+#include <sgx_report.h>
+#include <sgx_utils.h>
 #include <string.h>
 #include <stdlib.h>
 #include <string>
@@ -9,6 +11,8 @@
 #define SGX_USE_LAv2_INITIATOR
 #include <sgx_dh.h>
 
+#define MRENCLAVE_CHECK 1 // Responder EnclaveのMRENCLAVE同一性検証実行フラグ
+#define MRENCLAVE_DEBUG 1
 
 /* LAに関連する変数を格納 */
 namespace InitiatorLAParams
@@ -31,6 +35,40 @@ namespace IdentityRequest
 
     sgx_prod_id_t isv_prod_id = 0;
     sgx_isv_svn_t isv_svn = 0;
+}
+
+
+/* デバッグ用: uint8_tのarrayを文字列にする */
+void uint8_array_to_char_array(const uint8_t* data, size_t length, char* output) {
+    const char hex_chars[] = "0123456789abcdef";
+    size_t output_index = 0;
+    
+    for (size_t i = 0; i < length; ++i) {
+        output[output_index++] = hex_chars[data[i] >> 4];
+        output[output_index++] = hex_chars[data[i] & 0xF];
+        output[output_index++] = ' ';
+    }
+    
+    if (output_index > 0) {
+        output_index--;
+    }
+    
+    output[output_index] = '\0';
+}
+
+
+/* uint8_tのarrayを逆順にする */
+void reverse_array(uint8_t* arr, size_t size) {
+    size_t left = 0;
+    size_t right = size - 1;
+
+    while (left < right) {
+        uint8_t temp = arr[left];
+        arr[left] = arr[right];
+        arr[right] = temp;
+        ++left;
+        --right;
+    }
 }
 
 
@@ -92,12 +130,60 @@ int ecall_initiator_proc_msg3(sgx_dh_msg3_t *msg3)
     /* 同一性情報の検証 */
     int res = 0;
 
+    /* MRENCLAVE */
+    if (MRENCLAVE_CHECK)
+    {
+        sgx_report_t report;
+        sgx_status_t status = sgx_create_report(NULL, NULL, &report);
+
+        if (status != SGX_SUCCESS)
+        {
+            const char *message = "Failed to create Report of Initiator Enclave.";
+            ocall_print(message, 2); //2はエラーログである事を表す
+            ocall_print_status(status);
+            return -1;
+        }
+
+        // KSSによりResponder EnclaveのMRENCLAVEをXMLから取得
+        uint8_t *mr_enclave = new uint8_t[32]();
+        memcpy(mr_enclave, report.body.isv_ext_prod_id, 16);
+        memcpy(mr_enclave + 16, report.body.isv_family_id, 16);
+        reverse_array(mr_enclave, 32); //　なぜか配列が逆順になってしまうため
+
+        if (MRENCLAVE_DEBUG)
+        {
+            const char *message_kss = "MRENCLAVE obtained by KSS";
+            char *buffer = new char[32 * 3 + 1]();
+            uint8_array_to_char_array(mr_enclave, 32, buffer);
+            ocall_print(message_kss, 1);
+            ocall_print(buffer, 1);
+
+            const char *message_msg3 = "MRENCLAVE obtained by msg3";
+            uint8_t* response_mr_enclave = (uint8_t*)&responder_identity.mr_enclave;
+            uint8_array_to_char_array(response_mr_enclave, 32, buffer);
+            ocall_print(message_msg3, 1);
+            ocall_print(buffer, 1);
+        }
+
+        res = memcmp(&responder_identity.mr_enclave, mr_enclave, 32);
+
+        if (res)
+        {
+            const char *message = "MRENCLAVE of Responder Enclave mismatched.";
+            ocall_print(message, 2); //2はエラーログである事を表す
+            ocall_print_status(status);
+            return -1;
+        }
+        const char *message = "Initiator Enclave's MRENCLAVE is successfully verified.";
+        ocall_print(message, 1);
+    }
+
     /* MRSIGNER */
     res = memcmp(&responder_identity.mr_signer, &IdentityRequest::mr_signer, 32);
 
     if(res)
     {
-        const char *message = "MRSIGNER mismatched.";
+        const char *message = "MRSIGNER of Responder Enclave mismatched.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;
@@ -106,7 +192,7 @@ int ecall_initiator_proc_msg3(sgx_dh_msg3_t *msg3)
     /* ISV ProdID */
     if(responder_identity.isv_prod_id != IdentityRequest::isv_prod_id)
     {
-        const char *message = "ISV ProdID mismatched.";
+        const char *message = "ISV ProdID of Responder Enclave mismatched.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;
@@ -115,7 +201,7 @@ int ecall_initiator_proc_msg3(sgx_dh_msg3_t *msg3)
     /* ISVSVN */
     if(responder_identity.isv_svn < IdentityRequest::isv_svn)
     {
-        const char *message = "Insufficient ISVSVN.";
+        const char *message = "Insufficient ISVSVN of Responder Enclave.";
         ocall_print(message, 2); //2はエラーログである事を表す
         ocall_print_status(status);
         return -1;
@@ -170,3 +256,4 @@ int ecall_initiator_calc_average(uint8_t *value1,
 
     return 0;
 }
+
